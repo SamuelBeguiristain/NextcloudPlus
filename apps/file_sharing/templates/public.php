@@ -15,120 +15,140 @@
 		'flv' => true,
 	];
 
+	$text_types = [
+		'php' => 'php',
+	];
+
 	$is_image = isset($image_types[$file_ext]);
 	$is_video = isset($video_types[$file_ext]);
-
-	//print_r($_);
-	//exit;
+	$is_text = isset($text_types[$file_ext]);
 
 	header('Content-Security-Policy:');
 ?>
-<?php if ($is_image or $is_video): ?>
 
-<head>
-	<title><?php echo $_['filename']; ?></title>
-</head>
+<?php if ($is_image or $is_video or $is_text): ?>
 
-<!-- Stolen from firefox dev theme -->
-<style type="text/css">
-	@media not print {
-	  .overflowingVertical, .overflowingHorizontalOnly {
-	    cursor: zoom-out;
-	  }
+	<head>
+		<title><?php echo $_['filename']; ?></title>
+	</head>
 
-	  .shrinkToFit {
-	    cursor: zoom-in;
-	  }
-	}
-	@media print {
-		img {
-			display: block;
+	<!-- Stolen from firefox dev theme -->
+	<style type="text/css">
+		@media not print {
+		  .overflowingVertical, .overflowingHorizontalOnly {
+		    cursor: zoom-out;
+		  }
+
+		  .shrinkToFit {
+		    cursor: zoom-in;
+		  }
 		}
-	}
-	@media not print {
-	body {
-		margin: 0;
-	}
-	img {
-		text-align: center;
-		position: absolute;
-	    margin: auto;
-	    top: 0;
-	    right: 0;
-	    bottom: 0;
-	    left: 0;
-	  }
-
-	  img.overflowingVertical {
-		margin-top: 0;
-	  }
-
-		.completeRotation {
-			transition: transform 0.3s ease 0s;
+		@media print {
+			img {
+				display: block;
+			}
 		}
-	}
-	img {
-		image-orientation: from-image;
-	}
-	@media not print {
+		@media not print {
 		body {
-			color: #eee;
-			background-image: url("/apps/files_sharing/img/imagedoc-darknoise.png");
+			margin: 0;
 		}
+		img {
+			text-align: center;
+			position: absolute;
+		    margin: auto;
+		    top: 0;
+		    right: 0;
+		    bottom: 0;
+		    left: 0;
+		  }
 
-		img.transparent {
-			color: #222;
+		  img.overflowingVertical {
+			margin-top: 0;
+		  }
+
+			.completeRotation {
+				transition: transform 0.3s ease 0s;
+			}
 		}
-	}
-</style>
+		img {
+			image-orientation: from-image;
+		}
+		@media not print {
+			body {
+				color: #eee;
+				background-image: url("/apps/files_sharing/img/imagedoc-darknoise.png");
+			}
 
-<?php if ($is_video): ?>
-	<script type="text/javascript" src="https://content.jwplatform.com/libraries/JGrz7Tt8.js"></script>
+			img.transparent {
+				color: #222;
+			}
+		}
+	</style>
 
-	<div style="width: 70%; margin: 0 auto; padding-top: 5% ">
-		<div id="video_player"></div>
-	</div>
 
-	<script type="text/JavaScript">
-		jwplayer.key="BHdWH5ZmchzVO9kSC+idtQo0p0Gf9jHCCPmg3w=="
+	<?php if ($is_video): ?>
+		<script type="text/javascript" src="https://content.jwplatform.com/libraries/JGrz7Tt8.js"></script>
 
-		jwplayer("video_player").setup({
-			title: "<?php echo $_['filename'] ?>",
-		    file: "<?php echo $_['downloadURL']; ?>",
-		    type: "<?php echo $file_ext; ?>",
-		    image: "<?php echo("/apps/files_sharing/img/" . (($file_ext == 'mp3')  ? 'mp3' : 'mov') . ".png"); ?>",
-		    preload: true,
-		    abouttext: "Download",
-		    aboutlink: "<?php echo $_['downloadURL']; ?>",
-		});
-	</script>
+		<div style="width: 70%; margin: 0 auto; padding-top: 5% ">
+			<div id="video_player"></div>
+		</div>
+
+		<script type="text/JavaScript">
+			jwplayer("video_player").setup({
+				title: "<?php echo $_['filename'] ?>",
+			    file: "<?php echo $_['downloadURL']; ?>",
+			    type: "<?php echo $file_ext; ?>",
+			    image: "<?php echo("/apps/files_sharing/img/" . (($file_ext == 'mp3')  ? 'mp3' : 'mov') . ".png"); ?>",
+			    preload: true,
+			    abouttext: "Download",
+			    aboutlink: "<?php echo $_['downloadURL']; ?>",
+			});
+		</script>
+	<?php endif; ?>
+
+
+	<?php if ($is_image): ?>
+		<img id='img' style='max-width: 100%; max-height: 100%;' src='<?php echo $_['downloadURL']; ?>'>
+	<?php endif; ?>
+
+
+	<?php if ($is_text): ?>
+		<link rel="stylesheet" href="/apps/files_sharing/css/prism.css">
+		
+		<style type="text/css">
+			code[class*="language-"],
+			pre[class*="language-"] {
+				font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+				line-height: 1.25;
+				font-size: 12px;
+			}
+		</style>
+
+		<pre>
+			<code id="code" class="language-<?php echo $text_types[$file_ext]; ?> line-numbers">
+			Loading...
+			</code>
+		</pre>
+
+		<script type="text/javascript">
+			var xhr = new XMLHttpRequest();
+			xhr.open('GET', '<?php echo $_["downloadURL"] ?>');
+			xhr.onload = function() {
+            	document.getElementById("code").innerHTML = xhr.responseText;
+			};
+			xhr.send();
+
+		</script>
+
+		<script src="/apps/files_sharing/js/prism.js"></script>
+	<?php endif; ?>
+
+
 <?php exit; endif; ?>
 
 
-<?php
-	$url = $_['downloadURL'];
-	echo "<img id='img' style='max-width: 100%; max-height: 100%;' src='$url'>";
 
-	/*	header('Content-Type: ' . $_['mimetype']);
-		$ch = curl_init();
-	    curl_setopt($ch, CURLOPT_AUTOREFERER, TRUE);
-	    curl_setopt($ch, CURLOPT_HEADER, 0);
-	    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-	    curl_setopt($ch, CURLOPT_URL, $_['downloadURL']);
-	    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
-		$data = curl_exec($ch);
-		curl_close($ch);
-		echo $data;*/
-		
-	//}
-		
-	//\OCP\Util::addScript('files_sharing', 'video');
-	//\OCP\Util::addStyle('files_sharing', 'video');
-	//\OCP\Util::addStyle('files_sharing', 'video_sublime');
-?>
-
-<?php exit; endif; ?>
-
+<!-- Stock page -->
 <?php if ($_['previewSupported']): /* This enables preview images for links (e.g. on Facebook, Google+, ...)*/?>
 	<link rel="image_src" href="<?php p($_['previewImage']); ?>" />
 <?php endif; ?>
