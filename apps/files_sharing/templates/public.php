@@ -30,6 +30,10 @@
 
 	<head>
 		<title><?php echo $_['filename']; ?></title>
+		<meta name="twitter:card" content="photo"/>
+		<meta name="twitter:title" content="<?php echo $_['filename']; ?>"/>
+		<meta name="twitter:url" content="https://<?php echo  $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']; ?>"/>
+		<meta name="twitter:image" content="<?php echo $_['downloadURL']; ?>"/>
 	</head>
 
 	<!-- Stolen from firefox dev theme -->

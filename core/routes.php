@@ -86,7 +86,7 @@ $this->create('files.viewcontroller.showFile', '/f/{fileid}')->action(function($
 // Sharing routes
 function showshare($urlParams) 
 {
-	if ( isset($_SERVER['HTTP_REFERER']) || (isset($_SERVER['HTTP_USER_AGENT']) /*&& isset($_SERVER['HTTP_ACCEPT'])*/ && strstr(strtolower($_SERVER['HTTP_USER_AGENT']), 'discord')) ) 
+	if (isset($_SERVER['HTTP_REFERER'])) 
 	{
 		$urlParams['_route'] = 'files_sharing.sharecontroller.downloadShare';
 		$app = new \OCA\Files_Sharing\AppInfo\Application($urlParams);
