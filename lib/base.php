@@ -524,7 +524,6 @@ class OC {
 	 * also we can't directly interfere with PHP's session mechanism.
 	 */
 	private static function performSameSiteCookieProtection() {
-		return;
 		$request = \OC::$server->getRequest();
 
 		// Some user agents are notorious and don't really properly follow HTTP
@@ -567,6 +566,7 @@ class OC {
 					exit();
 				}
 			} else {
+				return;
 				// All other endpoints require the lax and the strict cookie
 				if(!$request->passesStrictCookieCheck()) {
 					self::sendSameSiteCookies();
@@ -579,6 +579,7 @@ class OC {
 				}
 			}
 		} elseif(!isset($_COOKIE['nc_sameSiteCookielax']) || !isset($_COOKIE['nc_sameSiteCookiestrict'])) {
+			return;
 			self::sendSameSiteCookies();
 		}
 	}

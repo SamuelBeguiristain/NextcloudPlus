@@ -86,7 +86,9 @@ $this->create('files.viewcontroller.showFile', '/f/{fileid}')->action(function($
 // Sharing routes
 function showshare($urlParams) 
 {
-	if (isset($_SERVER['HTTP_REFERER'])) 
+	$ref = $_SERVER['HTTP_ACCEPT'];
+	//error_log($ref);
+	if (isset($ref) && isset($_SERVER['HTTP_REFERER']) && ((substr($ref, 0, 5) === 'image') || (substr($ref, 0, 5) === 'video') || (substr($ref, 0, 3) === '*/*'))) 
 	{
 		$urlParams['_route'] = 'files_sharing.sharecontroller.downloadShare';
 		$app = new \OCA\Files_Sharing\AppInfo\Application($urlParams);
