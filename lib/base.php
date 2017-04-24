@@ -526,6 +526,11 @@ class OC {
 	private static function performSameSiteCookieProtection() {
 		$request = \OC::$server->getRequest();
 
+		//	die($request->getRequestUri());
+		if ($request->getRequestUri() != '/' && substr($request->getRequestUri(), 0, 6) != '/login'){
+			return;
+		}
+
 		// Some user agents are notorious and don't really properly follow HTTP
 		// specifications. For those, have an automated opt-out. Since the protection
 		// for remote.php is applied in base.php as starting point we need to opt out
@@ -534,6 +539,7 @@ class OC {
 			// OS X Finder
 			'/^WebDAVFS/',
 		];
+
 		if($request->isUserAgent($incompatibleUserAgents)) {
 			return;
 		}
@@ -566,7 +572,6 @@ class OC {
 					exit();
 				}
 			} else {
-				return;
 				// All other endpoints require the lax and the strict cookie
 				if(!$request->passesStrictCookieCheck()) {
 					self::sendSameSiteCookies();
@@ -579,7 +584,6 @@ class OC {
 				}
 			}
 		} elseif(!isset($_COOKIE['nc_sameSiteCookielax']) || !isset($_COOKIE['nc_sameSiteCookiestrict'])) {
-			return;
 			self::sendSameSiteCookies();
 		}
 	}
