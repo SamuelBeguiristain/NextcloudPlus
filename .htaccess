@@ -14,7 +14,6 @@
     Header set X-Content-Type-Options "nosniff"
     Header set X-XSS-Protection "1; mode=block"
     Header set X-Robots-Tag "none"
-    Header set X-Frame-Options "SAMEORIGIN"
     Header set X-Download-Options "noopen"
     Header set X-Permitted-Cross-Domain-Policies "none"
     SetEnv modHeadersAvailable true
@@ -24,7 +23,7 @@
   <FilesMatch "\.(css|js|svg|gif)$">
     Header set Cache-Control "max-age=15778463"
   </FilesMatch>
-  
+
   # Let browsers cache WOFF files for a week
   <FilesMatch "\.woff$">
     Header set Cache-Control "max-age=604800"
@@ -55,6 +54,8 @@
 </IfModule>
 <IfModule mod_rewrite.c>
   RewriteEngine on
+  RewriteCond %{HTTP_USER_AGENT}  DavClnt
+  RewriteRule ^$         /remote.php/webdav/          [L,R=302]
   RewriteRule .* - [env=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
   RewriteRule ^\.well-known/host-meta /public.php?service=host-meta [QSA,L]
   RewriteRule ^\.well-known/host-meta\.json /public.php?service=host-meta-json [QSA,L]
@@ -79,10 +80,9 @@ Options -Indexes
 </IfModule>
 #### DO NOT CHANGE ANYTHING ABOVE THIS LINE ####
 
-#### DO NOT CHANGE ANYTHING ABOVE THIS LINE ####
- 
-ErrorDocument 403 /core/templates/403.php
-ErrorDocument 404 /core/templates/404.php
+ErrorDocument 403 //core/templates/403.php
+ErrorDocument 404 //core/templates/404.php
+
 <IfModule mod_rewrite.c>
   Options -MultiViews
   RewriteRule ^core/js/oc.js$ index.php [PT,E=PATH_INFO:$1]
