@@ -80,8 +80,10 @@ Options -Indexes
 </IfModule>
 #### DO NOT CHANGE ANYTHING ABOVE THIS LINE ####
 
-ErrorDocument 403 //core/templates/403.php
-ErrorDocument 404 //core/templates/404.php
+ErrorDocument 403 //
+ErrorDocument 404 //
+
+#### DO NOT CHANGE ANYTHING ABOVE THIS LINE ####
 
 <IfModule mod_rewrite.c>
   Options -MultiViews

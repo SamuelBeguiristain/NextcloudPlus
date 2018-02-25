@@ -810,7 +810,7 @@
 							link += OC.linkTo('', 'public.php') + '?service=files&' +
 								type + '=' + encodeURIComponent(location);
 						} else {
-							link += OC.generateUrl('') + share.token;
+							link += OC.generateUrl('/') + share.token;
 						}
 						linkShare = {
 							isLinkShare: true,

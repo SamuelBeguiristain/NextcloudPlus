@@ -1,11 +1,14 @@
 <?php
 	$file_ext = strtolower(substr($_['filename'], strrpos($_['filename'], '.') + 1));
 
+	$url = "https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+
 	$image_types = [
 		'png' => true,
 		'jpg' => true,
 		'jpeg' => true,
 		'gif' => true,
+		'svg' => true
 	];
 
 	$video_types = [
@@ -13,6 +16,7 @@
 		'mp4' => true,
 		'mp3' => true,
 		'flv' => true,
+		'ogg' => true
 	];
 
 	$text_types = [
@@ -21,7 +25,7 @@
 		'lua' => 'lua',
 		'cs' => 'csharp',
 		'tpl' => 'smarty',
-		'txt' => 'txt',
+		'txt' => 'auto',
 	];
 
 	$is_image = isset($image_types[$file_ext]);
@@ -31,25 +35,38 @@
 	header('Content-Security-Policy:');
 ?>
 
-<?php if ($is_image or $is_video or $is_text): ?>
+<?php /*print_r($_); exit;*/ if ($is_image or $is_video or $is_text): ?>
 
 	<head>
 		<title><?php echo $_['filename']; ?></title>
-		<meta name="twitter:card" content="photo"/>
-		<meta name="twitter:title" content="<?php echo $_['filename']; ?>"/>
-		<meta name="twitter:url" content="https://<?php echo  $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']; ?>"/>
-		<meta name="twitter:image" content="<?php echo $_['downloadURL']; ?>"/>
+
+		<meta property="og:site_name" content="<?php echo $_SERVER['HTTP_HOST']; ?>">
+		<meta name="og:title" content="<?php echo $_['filename']; ?>"/>
+		<meta name="og:url" content="<?php echo $url; ?>"/>
+
+		<?php if ($is_image): ?>
+			<meta name="twitter:card" content="photo"/>
+			<meta name="og:image" content="<?php echo $url; ?>/preview"/>
+		<?php elseif ($is_video): ?>
+			<meta property="og:type" content="video.other"/>
+			<meta name="og:image" content="https://fi1.es/apps/files_sharing/img/mov.png"/>
+
+			<meta property="og:video" content="<?php echo $_['downloadURL']; ?>"/>
+			<meta property="og:video:type" content="<?php echo $_['mimetype']; ?>">
+			<meta property="og:video:width" content="<?php echo $_['previewMaxX']; ?>" />
+			<meta property="og:video:height" content="<?php echo $_['previewMaxY']; ?>" />
+		<?php endif; ?>
 	</head>
 
 	<!-- Stolen from firefox dev theme -->
 	<style type="text/css">
 		@media not print {
 		  .overflowingVertical, .overflowingHorizontalOnly {
-		    cursor: zoom-out;
+			cursor: zoom-out;
 		  }
 
 		  .shrinkToFit {
-		    cursor: zoom-in;
+			cursor: zoom-in;
 		  }
 		}
 		@media print {
@@ -64,11 +81,12 @@
 		img {
 			text-align: center;
 			position: absolute;
-		    margin: auto;
-		    top: 0;
-		    right: 0;
-		    bottom: 0;
-		    left: 0;
+			margin: auto;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+			object-fit: contain;
 		  }
 
 		  img.overflowingVertical {
@@ -105,12 +123,12 @@
 		<script type="text/JavaScript">
 			jwplayer("video_player").setup({
 				title: "<?php echo $_['filename'] ?>",
-			    file: "<?php echo $_['downloadURL']; ?>",
-			    type: "<?php echo $file_ext; ?>",
-			    image: "<?php echo("/apps/files_sharing/img/" . (($file_ext == 'mp3')  ? 'mp3' : 'mov') . ".png"); ?>",
-			    preload: true,
-			    abouttext: "Download",
-			    aboutlink: "<?php echo $_['downloadURL']; ?>",
+				file: "<?php echo $_['downloadURL']; ?>",
+				type: "<?php echo $file_ext; ?>",
+				image: "<?php echo("/apps/files_sharing/img/" . (($file_ext == 'mp3')  ? 'mp3' : 'mov') . ".png"); ?>",
+				preload: true,
+				abouttext: "Download",
+				aboutlink: "<?php echo $_['downloadURL']; ?>",
 			});
 		</script>
 	<?php endif; ?>
@@ -234,6 +252,11 @@
 
 
 <!-- Stock page -->
+<?php
+/** @var $l \OCP\IL10N */
+/** @var $_ array */
+?>
+
 <?php if ($_['previewSupported']): /* This enables preview images for links (e.g. on Facebook, Google+, ...)*/?>
 	<link rel="image_src" href="<?php p($_['previewImage']); ?>" />
 <?php endif; ?>
@@ -247,6 +270,7 @@
 <input type="hidden" id="isPublic" name="isPublic" value="1">
 <input type="hidden" name="dir" value="<?php p($_['dir']) ?>" id="dir">
 <input type="hidden" name="downloadURL" value="<?php p($_['downloadURL']) ?>" id="downloadURL">
+<input type="hidden" name="previewURL" value="<?php p($_['previewURL']) ?>" id="previewURL">
 <input type="hidden" name="sharingToken" value="<?php p($_['sharingToken']) ?>" id="sharingToken">
 <input type="hidden" name="filename" value="<?php p($_['filename']) ?>" id="filename">
 <input type="hidden" name="mimetype" value="<?php p($_['mimetype']) ?>" id="mimetype">
@@ -266,34 +290,51 @@ $maxUploadFilesize = min($upload_max_filesize, $post_max_size);
 
 
 <header><div id="header" class="<?php p((isset($_['folder']) ? 'share-folder' : 'share-file')) ?>">
-		<div id="header-left">
-			<a href="<?php print_unescaped(link_to('', 'index.php')); ?>"
-				title="" id="nextcloud">
-				<div class="logo-icon svg"></div>
+		<div class="header-left">
+			<span id="nextcloud">
+				<div class="logo logo-icon svg"></div>
 				<h1 class="header-appname">
-					<?php p($theme->getName()); ?>
+					<?php p($_['filename']); ?>
 				</h1>
-			</a>
+				<div class="header-shared-by">
+					<?php echo p($l->t('shared by %s', [$_['displayName']])); ?>
+				</div>
+			</span>
 		</div>
 
-		<div id="logo-claim" style="display:none;"><?php p($theme->getLogoClaim()); ?></div>
-		<div id="header-right">
-			<?php if (!isset($_['hideFileList']) || (isset($_['hideFileList']) && $_['hideFileList'] === false)) {
-				if ($_['server2serversharing']) {
-					?>
-					<span id="save" data-protected="<?php p($_['protected']) ?>"
-						  data-owner-display-name="<?php p($_['displayName']) ?>" data-owner="<?php p($_['owner']) ?>" data-name="<?php p($_['filename']) ?>">
-					<button id="save-button"><?php p($l->t('Add to your Nextcloud')) ?></button>
-					<form class="save-form hidden" action="#">
-						<input type="email" id="remote_address" placeholder="user@yourNextcloud.org"/>
-						<button id="save-button-confirm" class="icon-confirm svg" disabled></button>
-					</form>
-				</span>
-				<?php } ?>
-				<a href="<?php p($_['downloadURL']); ?>" id="download" class="button">
-					<span class="icon icon-download"></span>
-					<span id="download-text"><?php p($l->t('Download'))?></span>
-				</a>
+		<div class="header-right">
+			<?php if (!isset($_['hideFileList']) || (isset($_['hideFileList']) && $_['hideFileList'] === false)) { ?>
+			<a id="share-menutoggle" class="menutoggle icon-more-white"><span class="share-menutoggle-text"><?php p($l->t('Download')) ?></span></a>
+			<div id="share-menu" class="popovermenu menu">
+				<ul>
+					<li>
+						<a href="<?php p($_['downloadURL']); ?>" id="download">
+							<span class="icon icon-download"></span>
+							<?php p($l->t('Download'))?>&nbsp;<span class="download-size">(<?php p($_['fileSize']) ?>)</span>
+						</a>
+					</li>
+					<li>
+						<a id="directLink-container">
+							<span class="icon icon-public"></span>
+							<label for="directLink"><?php p($l->t('Direct link')) ?></label>
+							<input id="directLink" type="text" readonly value="<?php p($_['previewURL']); ?>">
+						</a>
+					</li>
+					<?php if ($_['server2serversharing']) { ?>
+					<li>
+						<a id="save" data-protected="<?php p($_['protected']) ?>"
+							  data-owner-display-name="<?php p($_['displayName']) ?>" data-owner="<?php p($_['owner']) ?>" data-name="<?php p($_['filename']) ?>">
+							<span class="icon icon-external"></span>
+							<span id="save-button"><?php p($l->t('Add to your Nextcloud')) ?></span>
+							<form class="save-form hidden" action="#">
+								<input type="text" id="remote_address" placeholder="user@yourNextcloud.org"/>
+								<button id="save-button-confirm" class="icon-confirm svg" disabled></button>
+							</form>
+						</a>
+					</li>
+					<?php } ?>
+				</ul>
+			</div>
 			<?php } ?>
 		</div>
 	</div></header>
@@ -304,26 +345,30 @@ $maxUploadFilesize = min($upload_max_filesize, $post_max_size);
 			<?php if (isset($_['folder'])): ?>
 				<?php print_unescaped($_['folder']); ?>
 			<?php else: ?>
-				<?php if ($_['previewEnabled'] && substr($_['mimetype'], 0, strpos($_['mimetype'], '/')) == 'video'): ?>
+				<?php if ($_['previewEnabled'] && substr($_['mimetype'], 0, strpos($_['mimetype'], '/')) === 'video'): ?>
 					<div id="imgframe">
 						<video tabindex="0" controls="" preload="none" style="max-width: <?php p($_['previewMaxX']); ?>px; max-height: <?php p($_['previewMaxY']); ?>px">
 							<source src="<?php p($_['downloadURL']); ?>" type="<?php p($_['mimetype']); ?>" />
 						</video>
 					</div>
+				<?php elseif ($_['previewEnabled'] && substr($_['mimetype'], 0, strpos($_['mimetype'], '/')) == 'audio'): ?>
+					<div id="imgframe">
+						<audio tabindex="0" controls="" preload="none" style="width: 100%; max-width: <?php p($_['previewMaxX']); ?>px; max-height: <?php p($_['previewMaxY']); ?>px">
+							<source src="<?php p($_['downloadURL']); ?>" type="<?php p($_['mimetype']); ?>" />
+						</audio>
+					</div>
 				<?php else: ?>
 					<!-- Preview frame is filled via JS to support SVG images for modern browsers -->
 					<div id="imgframe"></div>
 				<?php endif; ?>
+				<?php if ($_['previewURL'] === $_['downloadURL']): ?>
 				<div class="directDownload">
 					<a href="<?php p($_['downloadURL']); ?>" id="downloadFile" class="button">
 						<span class="icon icon-download"></span>
 						<?php p($l->t('Download %s', array($_['filename'])))?> (<?php p($_['fileSize']) ?>)
 					</a>
 				</div>
-				<div class="directLink">
-					<label for="directLink"><?php p($l->t('Direct link')) ?></label>
-					<input id="directLink" type="text" readonly value="<?php p($_['downloadURL']); ?>">
-				</div>
+				<?php endif; ?>
 			<?php endif; ?>
 		</div>
 		</div>

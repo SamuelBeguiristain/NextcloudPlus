@@ -1,1 +1,1 @@
-Better Nextcloud, only tested and known working on 12.0.0.29
+Better Nextcloud, only tested and known working on 13.0.0.14

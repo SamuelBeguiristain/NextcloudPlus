@@ -4,14 +4,15 @@
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
- * @author Christopher Schäpers <kondou@ts.unde.re>
  * @author Christoph Wurst <christoph@owncloud.com>
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Christopher Schäpers <kondou@ts.unde.re>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Thomas Tanghus <thomas@tanghus.net>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -62,6 +63,8 @@ $application->registerRoutes($this, [
 		['name' => 'Js#getJs', 'url' => '/js/{appName}/{fileName}', 'verb' => 'GET'],
 		['name' => 'contactsMenu#index', 'url' => '/contactsmenu/contacts', 'verb' => 'POST'],
 		['name' => 'contactsMenu#findOne', 'url' => '/contactsmenu/findOne', 'verb' => 'POST'],
+		['name' => 'AutoComplete#get', 'url' => 'autocomplete/get', 'verb' => 'GET'],
+		['name' => 'WalledGarden#get', 'url' => '/204', 'verb' => 'GET'],
 	],
 	'ocs' => [
 		['root' => '/cloud', 'name' => 'OCS#getCapabilities', 'url' => '/capabilities', 'verb' => 'GET'],
@@ -89,6 +92,10 @@ $this->create('files.viewcontroller.showFile', '/f/{fileid}')->action(function($
 });
 
 // Call routes
+/**
+ * @suppress PhanUndeclaredClassConstant
+ * @suppress PhanUndeclaredClassMethod
+ */
 $this->create('spreed.pagecontroller.showCall', '/call/{token}')->action(function($urlParams) {
 	if (class_exists(\OCA\Spreed\AppInfo\Application::class, false)) {
 		$app = new \OCA\Spreed\AppInfo\Application($urlParams);
@@ -99,24 +106,7 @@ $this->create('spreed.pagecontroller.showCall', '/call/{token}')->action(functio
 });
 
 // Sharing routes
-function showshare($urlParams)
-{
-	$ref = $_SERVER['HTTP_ACCEPT'];
-	//error_log($ref);
-	if (isset($ref) && isset($_SERVER['HTTP_REFERER']) && ((substr($ref, 0, 5) === 'image') || (substr($ref, 0, 5) === 'video') || (substr($ref, 0, 3) === '*/*')))
-	{
-		$urlParams['_route'] = 'files_sharing.sharecontroller.downloadShare';
-		$app = new \OCA\Files_Sharing\AppInfo\Application($urlParams);
-		$app->dispatch('ShareController', 'downloadShare');
-	}
-	else
-	{
-		$app = new \OCA\Files_Sharing\AppInfo\Application($urlParams);
-		$app->dispatch('ShareController', 'showShare');
-	}
-}
-
-function downloadshare($urlParams) {
+function downloadShare($urlParams) {
 	if (class_exists(\OCA\Files_Sharing\AppInfo\Application::class, false)) {
 		$app = new \OCA\Files_Sharing\AppInfo\Application($urlParams);
 		$app->dispatch('ShareController', 'downloadShare');
@@ -125,8 +115,44 @@ function downloadshare($urlParams) {
 	}
 }
 
-$this->create('files_sharing.sharecontroller.showShare', '{token}')->action(showshare);
-$this->create('files_sharing.sharecontroller.showShare2', '/s/{token}')->action(showshare);
+function previewShare($urlParams){
+	if (class_exists(\OCA\Files_Sharing\AppInfo\Application::class, false)) {
+		$app = new \OCA\Files_Sharing\AppInfo\Application($urlParams);
+		$app->dispatch('PublicPreviewController', 'directLink');
+	} else {
+		throw new \OC\HintException('App file sharing is not enabled');
+	}
+}
+
+function showShare($urlParams)
+{
+	$accept = $_SERVER['HTTP_ACCEPT'];
+
+	if (isset($accept) && isset($_SERVER['HTTP_REFERER'])) // image was embeded on a website
+	{
+		if (substr($accept, 0, 5) === 'image'){
+			previewShare($urlParams);
+		}
+		elseif ((substr($accept, 0, 5) === 'video') || (substr($accept, 0, 3) === '*/*')){
+			downloadShare($urlParams);
+		}
+	}
+	else
+	{
+		$app = new \OCA\Files_Sharing\AppInfo\Application($urlParams);
+		$app->dispatch('ShareController', 'showShare');
+	}
+}
+
+
+$this->create('files_sharing.sharecontroller.showShare', '{token}')->action(showShare);
+$this->create('files_sharing.sharecontroller.showShare2', '/s/{token}')->action(showShare);
+$this->create('files_sharing.sharecontroller.downloadShare', '/s/{token}/download')->get()->action(downloadShare);
+$this->create('files_sharing.sharecontroller.downloadShare2', '{token}/download')->get()->action(downloadShare);
+$this->create('files_sharing.publicpreview.directLink', '/s/{token}/preview')->get()->action(previewImage);
+$this->create('files_sharing.publicpreview.directLink2', '{token}/preview')->get()->action(previewShare);
+
+
 $this->create('files_sharing.sharecontroller.authenticate', '/s/{token}/authenticate')->post()->action(function($urlParams) {
 	if (class_exists(\OCA\Files_Sharing\AppInfo\Application::class, false)) {
 		$app = new \OCA\Files_Sharing\AppInfo\Application($urlParams);
@@ -143,8 +169,6 @@ $this->create('files_sharing.sharecontroller.showAuthenticate', '/s/{token}/auth
 		throw new \OC\HintException('App file sharing is not enabled');
 	}
 });
-$this->create('files_sharing.sharecontroller.downloadShare', '/s/{token}/download')->get()->action(downloadshare);
-$this->create('files_sharing.sharecontroller.downloadShare2', '{token}/download')->get()->action(downloadshare);
 
 // used for heartbeat
 $this->create('heartbeat', '/heartbeat')->action(function(){
