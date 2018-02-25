@@ -146,6 +146,7 @@ function showShare($urlParams)
 
 
 $this->create('files_sharing.sharecontroller.showShare', '{token}')->action(showShare);
+$this->create('files_sharing.sharecontroller.showShare', '{token}/')->action(showShare);
 $this->create('files_sharing.sharecontroller.showShare2', '/s/{token}')->action(showShare);
 $this->create('files_sharing.sharecontroller.downloadShare', '/s/{token}/download')->get()->action(downloadShare);
 $this->create('files_sharing.sharecontroller.downloadShare2', '{token}/download')->get()->action(downloadShare);
