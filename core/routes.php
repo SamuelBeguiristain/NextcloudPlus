@@ -128,14 +128,9 @@ function showShare($urlParams)
 {
 	$accept = $_SERVER['HTTP_ACCEPT'];
 
-	if (isset($accept) && isset($_SERVER['HTTP_REFERER'])) // image was embeded on a website
+	if (isset($accept) && isset($_SERVER['HTTP_REFERER']) && (((substr($accept, 0, 5) === 'image') || (substr($accept, 0, 5) === 'video')) || (substr($accept, 0, 3) === '*/*')))
 	{
-		if (substr($accept, 0, 5) === 'image'){
-			previewShare($urlParams);
-		}
-		elseif ((substr($accept, 0, 5) === 'video') || (substr($accept, 0, 3) === '*/*')){
-			downloadShare($urlParams);
-		}
+		downloadShare($urlParams);
 	}
 	else
 	{
@@ -144,15 +139,14 @@ function showShare($urlParams)
 	}
 }
 
-
-$this->create('files_sharing.sharecontroller.showShare', '{token}')->action(showShare);
-$this->create('files_sharing.sharecontroller.showShare', '{token}/')->action(showShare);
+$this->create('files_sharing.sharecontroller.showShare', '/{token}')->action(showShare);
 $this->create('files_sharing.sharecontroller.showShare2', '/s/{token}')->action(showShare);
-$this->create('files_sharing.sharecontroller.downloadShare', '/s/{token}/download')->get()->action(downloadShare);
-$this->create('files_sharing.sharecontroller.downloadShare2', '{token}/download')->get()->action(downloadShare);
-$this->create('files_sharing.publicpreview.directLink', '/s/{token}/preview')->get()->action(previewImage);
-$this->create('files_sharing.publicpreview.directLink2', '{token}/preview')->get()->action(previewShare);
 
+$this->create('files_sharing.sharecontroller.downloadShare', '/{token}/download')->get()->action(downloadShare);
+$this->create('files_sharing.sharecontroller.downloadShare2', '/s/{token}/download')->get()->action(downloadShare);
+
+$this->create('files_sharing.publicpreview.directLink', '/{token}/preview')->get()->action(previewShare);
+$this->create('files_sharing.publicpreview.directLin2', '/s/{token}/preview')->get()->action(previewImage);
 
 $this->create('files_sharing.sharecontroller.authenticate', '/s/{token}/authenticate')->post()->action(function($urlParams) {
 	if (class_exists(\OCA\Files_Sharing\AppInfo\Application::class, false)) {

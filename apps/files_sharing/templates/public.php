@@ -2,6 +2,7 @@
 	$file_ext = strtolower(substr($_['filename'], strrpos($_['filename'], '.') + 1));
 
 	$url = "https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+	$fileUrl = $url . ($_['mimetype'] == "image/gif" ? "/download" : "/preview");
 
 	$image_types = [
 		'png' => true,
@@ -41,15 +42,17 @@
 		<title><?php echo $_['filename']; ?></title>
 
 		<meta property="og:site_name" content="<?php echo $_SERVER['HTTP_HOST']; ?>">
-		<meta name="og:title" content="<?php echo $_['filename']; ?>"/>
-		<meta name="og:url" content="<?php echo $url; ?>"/>
+		<meta property="og:title" content="<?php echo $_['filename']; ?>"/>
+		<meta property="og:url" content="<?php echo $url; ?>"/>
 
 		<?php if ($is_image): ?>
-			<meta name="twitter:card" content="photo"/>
-			<meta name="og:image" content="<?php echo $url; ?>/preview"/>
+			<meta property="twitter:card" content="photo"/>
+			<meta property="og:image" content="<?php echo $fileUrl ?>"/>
+			<meta property="og:image:type" content="<?php echo $_['mimetype']; ?>" />
+
 		<?php elseif ($is_video): ?>
 			<meta property="og:type" content="video.other"/>
-			<meta name="og:image" content="https://fi1.es/apps/files_sharing/img/mov.png"/>
+			<meta property="og:image" content="https://fi1.es/apps/files_sharing/img/mov.png"/>
 
 			<meta property="og:video" content="<?php echo $_['downloadURL']; ?>"/>
 			<meta property="og:video:type" content="<?php echo $_['mimetype']; ?>">
@@ -125,7 +128,7 @@
 				title: "<?php echo $_['filename'] ?>",
 				file: "<?php echo $_['downloadURL']; ?>",
 				type: "<?php echo $file_ext; ?>",
-				image: "<?php echo("/apps/files_sharing/img/" . (($file_ext == 'mp3')  ? 'mp3' : 'mov') . ".png"); ?>",
+				image: "<?php echo("/apps/files_sharing/img/" . (($file_ext == 'mp3') ? 'mp3' : 'mov') . ".png"); ?>",
 				preload: true,
 				abouttext: "Download",
 				aboutlink: "<?php echo $_['downloadURL']; ?>",
@@ -135,7 +138,7 @@
 
 
 	<?php if ($is_image): ?>
-		<img id='img' style='max-width: 100%; max-height: 100%;' src='<?php echo $_['downloadURL']; ?>'>
+		<img id='img' style='max-width: 100%; max-height: 100%;' src='<?php echo $fileUrl ?>'>
 	<?php endif; ?>
 
 

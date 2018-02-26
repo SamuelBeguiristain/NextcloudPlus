@@ -7,18 +7,21 @@
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Damjan Georgievski <gdamjan@gmail.com>
  * @author davidgumberg <davidnoizgumberg@gmail.com>
  * @author Florin Peter <github@florin-peter.de>
- * @author Georg Ehrke <georg@owncloud.com>
- * @author Hugo Gonzalez Labrador <hglavra@gmail.com>
  * @author Individual IT Services <info@individual-it.net>
  * @author Jakob Sack <mail@jakobsack.de>
- * @author Joachim Bauch <bauch@struktur.de>
+ * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
  * @author Joachim Sokolowski <github@sokolowski.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Juan Pablo Villafáñez <jvillafanez@solidgear.es>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Ko- <k.stoffelen@cs.ru.nl>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -28,9 +31,9 @@
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sebastian Wessalowski <sebastian@wessalowski.org>
  * @author Stefan Weil <sw@weilnetz.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Thomas Pulzer <t.pulzer@kniel.de>
  * @author Thomas Tanghus <thomas@tanghus.net>
  * @author Vincent Petry <pvince81@owncloud.com>
  * @author Volkan Gezer <volkangezer@gmail.com>
@@ -280,6 +283,7 @@ class OC {
 			// render error page
 			$template = new OC_Template('', 'update.user', 'guest');
 			OC_Util::addScript('maintenance-check');
+			OC_Util::addStyle('core', 'guest');
 			$template->printPage();
 			die();
 		}
@@ -292,6 +296,9 @@ class OC {
 	 */
 	public static function checkUpgrade($showTemplate = true) {
 		if (\OCP\Util::needUpgrade()) {
+			if (function_exists('opcache_reset')) {
+				opcache_reset();
+			}
 			$systemConfig = \OC::$server->getSystemConfig();
 			if ($showTemplate && !$systemConfig->getValue('maintenance', false)) {
 				self::printUpgradePage();
@@ -405,6 +412,10 @@ class OC {
 	}
 
 	public static function initSession() {
+		if(self::$server->getRequest()->getServerProtocol() === 'https') {
+			ini_set('session.cookie_secure', true);
+		}
+
 		// prevents javascript from accessing php session cookies
 		ini_set('session.cookie_httponly', true);
 
@@ -523,11 +534,9 @@ class OC {
 	private static function performSameSiteCookieProtection() {
 		$request = \OC::$server->getRequest();
 
-		//	die($request->getRequestUri());
 		if ($request->getRequestUri() != '/' && substr($request->getRequestUri(), 0, 6) != '/login'){
 			return;
 		}
-
 
 		// Some user agents are notorious and don't really properly follow HTTP
 		// specifications. For those, have an automated opt-out. Since the protection
@@ -545,39 +554,20 @@ class OC {
 			$requestUri = $request->getScriptName();
 			$processingScript = explode('/', $requestUri);
 			$processingScript = $processingScript[count($processingScript)-1];
-			// FIXME: In a SAML scenario we don't get any strict or lax cookie
-			// send for the ACS endpoint. Since we have some legacy code in Nextcloud
-			// (direct PHP files) the enforcement of lax cookies is performed here
-			// instead of the middleware.
-			//
-			// This means we cannot exclude some routes from the cookie validation,
-			// which normally is not a problem but is a little bit cumbersome for
-			// this use-case.
-			// Once the old legacy PHP endpoints have been removed we can move
-			// the verification into a middleware and also adds some exemptions.
-			//
-			// Questions about this code? Ask Lukas ;-)
-			$currentUrl = substr(explode('?',$request->getRequestUri(), 2)[0], strlen(\OC::$WEBROOT));
-			if($currentUrl === '/index.php/apps/user_saml/saml/acs' || $currentUrl === '/apps/user_saml/saml/acs') {
+
+			// index.php routes are handled in the middleware
+			if($processingScript === 'index.php') {
 				return;
 			}
-			// For the "index.php" endpoint only a lax cookie is required.
-			if($processingScript === 'index.php') {
-				if(!$request->passesLaxCookieCheck()) {
-					self::sendSameSiteCookies();
-					header('Location: '.$_SERVER['REQUEST_URI']);
+
+			// All other endpoints require the lax and the strict cookie
+			if(!$request->passesStrictCookieCheck()) {
+				self::sendSameSiteCookies();
+				// Debug mode gets access to the resources without strict cookie
+				// due to the fact that the SabreDAV browser also lives there.
+				if(!\OC::$server->getConfig()->getSystemValue('debug', false)) {
+					http_response_code(\OCP\AppFramework\Http::STATUS_SERVICE_UNAVAILABLE);
 					exit();
-				}
-			} else {
-				// All other endpoints require the lax and the strict cookie
-				if(!$request->passesStrictCookieCheck()) {
-					self::sendSameSiteCookies();
-					// Debug mode gets access to the resources without strict cookie
-					// due to the fact that the SabreDAV browser also lives there.
-					if(!\OC::$server->getConfig()->getSystemValue('debug', false)) {
-						http_response_code(\OCP\AppFramework\Http::STATUS_SERVICE_UNAVAILABLE);
-						exit();
-					}
 				}
 			}
 		} elseif(!isset($_COOKIE['nc_sameSiteCookielax']) || !isset($_COOKIE['nc_sameSiteCookiestrict'])) {
@@ -681,9 +671,6 @@ class OC {
 		self::checkInstalled();
 
 		OC_Response::addSecurityHeaders();
-		if(self::$server->getRequest()->getServerProtocol() === 'https') {
-			ini_set('session.cookie_secure', true);
-		}
 
 		self::performSameSiteCookieProtection();
 
@@ -748,10 +735,9 @@ class OC {
 			OC_User::setIncognitoMode(true);
 		}
 
-		self::registerCacheHooks();
+		self::registerCleanupHooks();
 		self::registerFilesystemHooks();
 		self::registerShareHooks();
-		self::registerLogRotate();
 		self::registerEncryptionWrapper();
 		self::registerEncryptionHooks();
 		self::registerAccountHooks();
@@ -797,8 +783,16 @@ class OC {
 				$isScssRequest = true;
 			}
 
+			if(substr($request->getRequestUri(), -11) === '/status.php') {
+				OC_Response::setStatus(\OC_Response::STATUS_BAD_REQUEST);
+				header('Status: 400 Bad Request');
+				header('Content-Type: application/json');
+				echo '{"error": "Trusted domain error.", "code": 15}';
+				exit();
+			}
+
 			if (!$isScssRequest) {
-				header('HTTP/1.1 400 Bad Request');
+				OC_Response::setStatus(\OC_Response::STATUS_BAD_REQUEST);
 				header('Status: 400 Bad Request');
 
 				\OC::$server->getLogger()->warning(
@@ -821,15 +815,23 @@ class OC {
 	}
 
 	/**
-	 * register hooks for the cache
+	 * register hooks for the cleanup of cache and bruteforce protection
 	 */
-	public static function registerCacheHooks() {
+	public static function registerCleanupHooks() {
 		//don't try to do this before we are properly setup
 		if (\OC::$server->getSystemConfig()->getValue('installed', false) && !self::checkUpgrade(false)) {
 
 			// NOTE: This will be replaced to use OCP
 			$userSession = self::$server->getUserSession();
-			$userSession->listen('\OC\User', 'postLogin', function () {
+			$userSession->listen('\OC\User', 'postLogin', function () use ($userSession) {
+				if (!defined('PHPUNIT_RUN')) {
+					// reset brute force delay for this IP address and username
+					$uid = \OC::$server->getUserSession()->getUser()->getUID();
+					$request = \OC::$server->getRequest();
+					$throttler = \OC::$server->getBruteForceThrottler();
+					$throttler->resetDelay($request->getRemoteAddress(), 'login', ['user' => $uid]);
+				}
+
 				try {
 					$cache = new \OC\Cache\File();
 					$cache->gc();
@@ -884,18 +886,6 @@ class OC {
 	}
 
 	/**
-	 * register hooks for the cache
-	 */
-	public static function registerLogRotate() {
-		$systemConfig = \OC::$server->getSystemConfig();
-		if ($systemConfig->getValue('installed', false) && $systemConfig->getValue('log_rotate_size', false) && !self::checkUpgrade(false)) {
-			//don't try to do this before we are properly setup
-			//use custom logfile path if defined, otherwise use default of nextcloud.log in data directory
-			\OC::$server->getJobList()->add('OC\Log\Rotate');
-		}
-	}
-
-	/**
 	 * register hooks for the filesystem
 	 */
 	public static function registerFilesystemHooks() {
@@ -946,9 +936,15 @@ class OC {
 		// Check if Nextcloud is installed or in maintenance (update) mode
 		if (!$systemConfig->getValue('installed', false)) {
 			\OC::$server->getSession()->clear();
-			$setupHelper = new OC\Setup(\OC::$server->getSystemConfig(), \OC::$server->getIniWrapper(),
-				\OC::$server->getL10N('lib'), \OC::$server->query(\OCP\Defaults::class), \OC::$server->getLogger(),
-				\OC::$server->getSecureRandom());
+			$setupHelper = new OC\Setup(
+				\OC::$server->getSystemConfig(),
+				\OC::$server->getIniWrapper(),
+				\OC::$server->getL10N('lib'),
+				\OC::$server->query(\OCP\Defaults::class),
+				\OC::$server->getLogger(),
+				\OC::$server->getSecureRandom(),
+				\OC::$server->query(\OC\Installer::class)
+			);
 			$controller = new OC\Core\Controller\SetupController($setupHelper);
 			$controller->run($_POST);
 			exit();
