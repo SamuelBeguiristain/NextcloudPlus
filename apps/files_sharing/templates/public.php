@@ -2,7 +2,8 @@
 	$file_ext = strtolower(substr($_['filename'], strrpos($_['filename'], '.') + 1));
 
 	$url = "https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-	$fileUrl = $url . ($_['mimetype'] == "image/gif" ? "/download" : "/preview");
+	//$fileUrl = $url . ($_['mimetype'] == "image/gif" ? "/download" : "/preview");
+	$fileUrl = $url . "/download";
 
 	$image_types = [
 		'png' => true,
@@ -27,6 +28,7 @@
 		'cs' => 'csharp',
 		'tpl' => 'smarty',
 		'txt' => 'auto',
+		'sh' => 'bash'
 	];
 
 	$is_image = isset($image_types[$file_ext]);
@@ -41,6 +43,10 @@
 	<head>
 		<title><?php echo $_['filename']; ?></title>
 
+		<?php if ($is_text): ?>
+			<link rel="stylesheet" href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/styles/tomorrow-night.min.css"">
+		<?php endif; ?>
+
 		<meta property="og:site_name" content="<?php echo $_SERVER['HTTP_HOST']; ?>">
 		<meta property="og:title" content="<?php echo $_['filename']; ?>"/>
 		<meta property="og:url" content="<?php echo $url; ?>"/>
@@ -52,7 +58,7 @@
 
 		<?php elseif ($is_video): ?>
 			<meta property="og:type" content="video.other"/>
-			<meta property="og:image" content="https://fi1.es/apps/files_sharing/img/mov.png"/>
+			<meta property="og:image" content="/apps/files_sharing/img/mov.png"/>
 
 			<meta property="og:video" content="<?php echo $_['downloadURL']; ?>"/>
 			<meta property="og:video:type" content="<?php echo $_['mimetype']; ?>">
@@ -143,8 +149,6 @@
 
 
 	<?php if ($is_text): ?>
-		<link rel="stylesheet" href="/apps/files_sharing/css/prism-twilight-lines.css">
-
 		<style type="text/css">
 			code[class*="language-"],
 			pre[class*="language-"] {
@@ -226,15 +230,15 @@
 			}
 		</style>
 
-		<div style="padding-left: 5%; padding-top: 15px; width: 90%;">
+		<div style="padding-left: 10%; padding-top: 25px; padding-bottom: 25px; width: 80%;">
 			<pre>
-				<code id="code" class="language-<?php echo $text_types[$file_ext]; ?> line-numbers">
+				<code id="code">
 				<div class="loader">Loading...</div>
 				</code>
 			</pre>
 		</div>
 
-		<script src="/apps/files_sharing/js/prism2.js" data-manual></script>
+		<script type="text/javascript" src="/apps/files_sharing/js/highlight.pack.js"></script>
 
 		<script type="text/javascript">
 			function htmlEntities(str) {
@@ -244,7 +248,7 @@
 			xhr.open('GET', '<?php echo $_["downloadURL"] ?>');
 			xhr.onload = function() {
 				document.getElementById("code").innerHTML = htmlEntities(xhr.responseText);
-				Prism.highlightAll();
+				hljs.initHighlighting();
 			};
 			xhr.send();
 		</script>
